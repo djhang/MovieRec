@@ -1,0 +1,120 @@
+#! /usr/bin/env python
+#coding=utf-8
+import os
+import timeit
+import random
+
+
+predict = open("data-v/predict.txt")
+
+t_user = {}
+t_movie= {}
+user_dis = {}
+
+def preprocess():
+    train = open("data-v/training_set.txt")
+    n = 0
+    for line in train.readlines():
+        terms = line[:-2].split('\t')
+        x = float(terms[2])
+        if t_user.has_key(terms[0]):
+            t_user[terms[0]][terms[1]] = x
+        else:
+            t_user[terms[0]] = {terms[1]: x}
+        if t_movie.has_key(terms[0]):
+            t_movie[terms[1]][terms[0]] = x
+        else:
+            t_movie[terms[1]] = {terms[0] : x}
+        n += 1
+    #    if n > 1000: break
+    print len(t_user)
+    return 
+
+def manhattn(rating1, rating2):
+    n = 0
+    sum = 0
+    for x in rating1:
+        if x in rating2:
+            sum += abs(rating1[x] - rating2[x])
+            n += 1
+    if n == 0:
+        return -1
+    else:
+        return sum/n
+    
+def closestUser(uId):
+    dis = []
+    #print t_user.keys()
+    for user in t_user:
+        if user != uId:
+            d = manhattn(t_user[uId], t_user[user])
+            dis.append((d,user))
+    dis.sort()
+    return dis
+
+def distances():
+    for x in t_user:
+        dis = closestUser(x)
+        user_dis[x] = dis
+    return 
+
+def input():
+    pre = []
+    predict = open("data-v/predict.txt")
+    for line in predict:
+        pre.append(line[:-2])
+    return pre
+
+def predict1(pre):
+    n = 0
+    for i in xrange(0,len(pre)):
+        n += 1
+        if n % 100 == 0:
+            print n
+        terms = pre[i].split('\t')
+        dis = user_dis[terms[0]]
+        count = 0
+        sum = 0
+        for i in range(0, len(dis)):
+            if i > 3:
+                break
+            if t_user[dis[i][1]].has_key(terms[1]):
+                count += 1
+                sum += t_user[dis[i][1]][terms[1]]
+        if count != 0:
+            pre[i] += '\t' + str(sum / count) + '\r\n'
+        else:
+            pre[i] += '\t' + '4' + '\r\n'
+    return pre
+
+def output(ans_predict):
+    out = open("output/predict.txt", "w")
+    for line in ans_predict:
+        out.write(line)
+    out.close()
+    
+
+if __name__== "__main__":
+    
+    starttime = timeit.default_timer()
+    
+    
+    print 'begin'
+    preprocess()
+    endtime = timeit.default_timer()
+    interval=(endtime - starttime)
+    print str(interval) + "  seconds"
+    
+    distances()
+    endtime = timeit.default_timer()
+    interval=(endtime - starttime)
+    print str(interval) + "  seconds"
+    
+    print 'step1'
+    pre = input()
+    ans_predict = predict1(pre)
+    output(ans_predict)
+    
+    endtime = timeit.default_timer()
+    interval=(endtime - starttime)
+    print str(interval) + "  seconds"
